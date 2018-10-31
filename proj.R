@@ -1,123 +1,60 @@
 rm(list = ls())
 library(rvest)
 library(stringr)
-url <- "http://genomebiology.biomedcentral.com/articles/"
+#url <- "http://genomebiology.biomedcentral.com/articles/"
+url <- "https://genomebiology.biomedcentral.com/articles?searchType=journalSearch&sort=PubDate&page=1"
+
+all_content <- data.frame(doi=c(),title=c(),authors=c(),author_affiliates=c(),
+                          corresp_author=c(),corresp_author_em=c(),pub_date=c(),
+                          abstract=c(),keywords=c(),full_text=c())
+tom <- data.frame(doi="doi",title="Title",authors="Your mom",author_affiliates="Yourdad",
+                  corresp_author="Your dog",corresp_author_em="dog@gmail.com",pub_date="3/6/2008",
+                  abstract="nah",keywords="awesome",full_text="such text very wow")
+all_content <- rbind(all_content, tom)
+#all_content
+#nrow(all_content)
+#ncol(all_content)
+
+#write_journal_html<- function(doi){
+#}
+
+num_pages <- c(1:126)
+all_url <- "https://genomebiology.biomedcentral.com/articles?searchType=journalSearch&sort=PubDate&page=%d"
+for(i in num_pages){
+  url <- sprintf(all_url, 7)
+}
+
 journal <- read_html(url)
 articles <- str_squish(journal %>% html_nodes(".c-teaser__title") %>% html_text())
-articles
-new <- list()
+length(articles)
+arts <- list()
 s <- html_session(url)
-for (i in articles[1:15]){
-  page <- s %>% follow_link(i) %>% read_html()
-  new[[i]] <- page %>% html_nodes("#Abs1") %>% html_text()
+for (idx in seq_along(articles[1:2])){
+  new <- list()
+  art <- articles[idx]
+  page <- s %>% follow_link(art) %>% read_html()
+  doi_str <- str_replace_all(str_squish(page %>% html_nodes(".u-text-inherit") %>% html_text())[1], "(https://doi.org/)|/", "")
+  new[["doi"]] <- doi_str
+  jtext <- as.character(page)
+  conn <- file(paste(getwd(), "/articles/", doi_str, ".txt", sep=""))
+  writeLines(jtext, conn)
+  close(conn)
+  new[["title"]] <- str_squish(page %>% html_nodes(".ArticleTitle") %>% html_text())
+  new[["authors"]] <- str_replace_all(str_squish(page %>% html_nodes(".AuthorNames") %>% html_text()), "[0-9]|Email author", "")
+  #new[[aut_affs]] <- str_squish(page %>% html_nodes("") %>% html_text())
+  #new[[corr_auth]] <- str_squish(page %>% html_nodes("") %>% html_text())
+  #new[[corr_auth_email]] <- str_squish(page %>% html_nodes("") %>% html_text())
+  pub_str <- str_squish(page %>% html_nodes(".u-reset-list") %>% html_text())
+  pub_pos <- grep("Published", pub_str)
+  new[["pub_date"]] <- pub_str[pub_pos]
+  new[["abs"]] <- str_squish(page %>% html_nodes("#Abs1") %>% html_text())
+  new[["keywords"]] <- str_squish(page %>% html_nodes(".c-keywords") %>% html_text())
+  #Replaces empty elements with NA
+  for (i in seq_along(new)){
+    if(length(new[[i]]) == 0){
+      new[[i]] <- NA
+    }
+  }
+  new[["full_text"]] <- str_squish(page %>% html_nodes(".FulltextWrapper") %>% html_text())
+  arts[[idx]] <- new 
 }
-new
-
-
-
-
-
-movie <- read_html("http://www.imdb.com/title/tt1431045")
-cred_sum <- movie %>% html_nodes(".credit_summary_item") %>% html_text()
-sum <- movie %>% html_node(".summary_text") %>% html_text()
-
-
-library(rvest)
-url<- "http://www.imdb.com/title/tt0974015/"
-cast <- str_squish(read_html(url) %>% html_nodes("td") %>% html_text())
-cast <- cast[-c(1,seq(2,62,by=2),62:70)]
-cast <- cast[-seq(2,30,by=2)]
-length(cast) # 15
-new <- list()
-s <- html_session(url)
-for (i in seq_along(cast)){
-  page <- s %>% follow_link(i) %>% read_html()
-  new[[i]] <- page %>% html_nodes("b a") %>% html_text()
-}
-
-
-
-
-
-library(rvest)
-library(stringr)
-library(data.table)
-lego_movie <- read_html("http://www.imdb.com/title/tt1490017/")
-cast <- lego_movie %>%
-  html_nodes("#titleCast .itemprop span") %>%
-  html_text()
-cast
-
-s <- html_session("http://www.imdb.com/title/tt1490017/")
-
-cast_movies <- list()
-
-for(i in cast[1:3]){
-  actorpage <- s %>% follow_link(i) %>% read_html()
-  cast_movies[[i]]$movies <-  actorpage %>% 
-    html_nodes("b a") %>% html_text() %>% head(10)
-  cast_movies[[i]]$years <- actorpage %>%
-    html_nodes("#filmography .year_column") %>% html_text() %>% 
-    head(10) %>% str_extract("[0-9]{4}")
-  cast_movies[[i]]$name <- rep(i, length(cast_movies[[i]]$years))
-}
-
-cast_movies
-as.data.frame(cast_movies[[1]])
-rbindlist(cast_movies)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-library (data.table)
-library(XML)
-pages <- c("data-scientist-midwest-or-silicon-valley","statistician-and-r-developer-with-gmm-expertise")
-urls <- rbindlist(lapply(pages,function(x){
-  url<-paste("http://www.r-users.com/jobs/",x,"/",sep="")
-  data.frame(url)
-}),fill=TRUE)
-
-joblocations <- rbindlist(apply(urls, 1, function(url){
-  doc1 <- htmlParse(url)
-  locations <- getNodeSet(doc1, '//*[@id="mainContent"]/div[2]/o1/li/dl/dd[3]/span/text()')
-  data.frame(sapply(locations, function(x) { xmlValue(x) }))
-}), fill=TRUE)
-
-
-library(RCurl)
-library(XML)
-
-doc.html = htmlTreeParse("http://genomebiology.biomedcentral.com/articles", useInternal = TRUE)
-
-articles = "http://genomebiology.biomedcentral.com/articles"
-html <- getURL(articles)
-
-# parse html
-doc = htmlParse(html, asText=TRUE)
-Title = xpathSApply(doc, "//*[@id='artTitle']", xmlValue)
-Authors = xpathSApply(doc, "//*[@id='floatAuthorList']", xmlValue)
-## remove some special characters in the Authors to get clean text
-Authors = gsub("\n", " ", Authors)
-## Split the Authors by "   ,   " to get every author (See R regular expression for more information)
-Authors = strsplit(Authors,'\\s*,\\s*')
-
-PubDate = xpathSApply(doc, "//*[@id='artPubDate']", xmlValue)
-## Get clean date
-PubDate = gsub('Published:\\s*', '', PubDate)
-
-Abstract = xpathSApply(doc, "//*[@class='abstract toc-section']/*[@title='Abstract']/../p", xmlValue)
-
