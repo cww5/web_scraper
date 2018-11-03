@@ -1,0 +1,4 @@
+content <- read.csv("genomebiology.txt", check.names=FALSE, na.strings = "NA")
+nrow(content)
+ncol(content)
+colnames(content)
